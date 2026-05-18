@@ -1,0 +1,6 @@
+[tools]
+neovim = "latest"
+fzf = "latest"
+ripgrep = "latest"
+fd = "latest"
+node = "22"

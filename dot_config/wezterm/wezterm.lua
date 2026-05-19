@@ -51,12 +51,13 @@ config.colors = {
 
 
 -- Helper to detect Neovim
+-- Helper to detect Neovim instantaneously
 local function is_vim(pane)
-  local process_name = pane:get_foreground_process_name()
-  if not process_name then return false end
-  process_name = process_name:match("^.+[/\\](.+)$") or process_name
-  return process_name == 'nvim' or process_name == 'nvim.exe'
+  -- Instead of querying the slow Windows API, we check the memory variable
+  -- that smart-splits.nvim automatically broadcasts when it is running.
+  return pane:get_user_vars().IS_NVIM == 'true'
 end
+
 
 -- Helper for seamless movement (Alt + h/j/k/l)
 local function direction_keys(key, direction)

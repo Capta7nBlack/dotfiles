@@ -26,12 +26,28 @@ require("lazy").setup({
         tag = '0.1.8',
         dependencies = { 'nvim-lua/plenary.nvim' },
 	keys = {
-            { "<leader>ff", "<cmd>Telescope find_files<cr>", desc = "Find Files (Telescope)" },
-            { "<leader>fg", "<cmd>Telescope live_grep<cr>", desc = "Live Grep (Telescope)" },
-            { "<leader>fb", "<cmd>Telescope buffers<cr>", desc = "Find Buffers (Telescope)" },
-        },
-    },
+            -- 1. Find Files: Always search from the .git root (if it exists)
+            { "<leader>ff", function()
+                local builtin = require('telescope.builtin')
+                -- Find the nearest .git folder upwards. If not in a git repo, fallback to current dir.
+                local root = vim.fs.root(0, ".git") or vim.fn.getcwd()
+                builtin.find_files({ cwd = root })
+            end, desc = "Find Files (Project Root)" },
 
+            -- 2. Live Grep: Always search from the .git root
+            { "<leader>fg", function()
+                local builtin = require('telescope.builtin')
+                local root = vim.fs.root(0, ".git") or vim.fn.getcwd()
+                builtin.live_grep({ cwd = root })
+            end, desc = "Live Grep (Project Root)" },
+
+            -- 3. Find Buffers: Already global to Neovim, so no root logic needed
+            { "<leader>fb", "<cmd>Telescope buffers<cr>", desc = "Find Buffers" },
+            
+            -- 4. Help Tags: Searches Neovim documentation
+            { "<leader>fh", "<cmd>Telescope help_tags<cr>", desc = "Help Tags" },
+        }
+	},
     {
         -- OIL
         'stevearc/oil.nvim',
@@ -89,8 +105,9 @@ require("lazy").setup({
             vim.keymap.set("n", "-", "<CMD>Oil<CR>", { desc = "Open parent directory" })
         end,
     },
-    {
+    {   -- SMART SPLITS
         'mrjones2014/smart-splits.nvim',
+	lazy = false,
         keys = {
             -- Alt + hjkl for Navigation
             { "<M-h>", function() require("smart-splits").move_cursor_left() end, desc = "Move Left" },

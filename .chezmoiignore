@@ -1,0 +1,11 @@
+# 1. If the OS is NOT Windows, ignore the PowerShell profile
+{{ if ne .chezmoi.os "windows" }}
+readonly_Documents/WindowsPowerShell/**
+{{ end }}
+
+# 2. If the OS IS Windows, ignore the Unix shell configs
+{{ if eq .chezmoi.os "windows" }}
+.bashrc
+.zshrc
+.bash_profile
+{{ end }}

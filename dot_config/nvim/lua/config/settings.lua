@@ -17,6 +17,13 @@ opt.autochdir = true
 -- swapfile error disregardment 
 opt.swapfile = false
 
+-- === TIMING & DELAYS ===
+-- Time in milliseconds to wait for a mapped sequence to complete (e.g., Leader keys)
+vim.opt.timeoutlen = 300 
+
+-- Time in milliseconds to wait for a key code sequence (fixes the Alt-key lag)
+vim.opt.ttimeoutlen = 0
+
 -- Transparent background
 vim.cmd("highlight Normal guibg=NONE ctermbg=NONE")
 vim.cmd("highlight NonText guibg=NONE ctermbg=NONE")
@@ -36,7 +43,7 @@ opt.showbreak = ">>>"
 
 if _G.IS_WINDOWS then
     -- Force Windows to use pwsh (PowerShell Core) safely
-    vim.opt.shell = "pwsh.exe"
+    vim.opt.shell = "cmd.exe"
     vim.opt.shellcmdflag = "-NoLogo -NoProfile -ExecutionPolicy RemoteSigned -Command [Console]::InputEncoding=[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;"
     vim.opt.shellredir = "-RedirectStandardOutput %s -NoNewWindow -Wait"
     vim.opt.shellpipe = "2>&1 | Out-File -Encoding UTF8 %s; exit $LastExitCode"

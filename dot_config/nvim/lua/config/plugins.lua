@@ -24,7 +24,12 @@ require("lazy").setup({
         -- TELESCOPE
         'nvim-telescope/telescope.nvim',
         tag = '0.1.8',
-        dependencies = { 'nvim-lua/plenary.nvim' }
+        dependencies = { 'nvim-lua/plenary.nvim' },
+	keys = {
+            { "<leader>ff", "<cmd>Telescope find_files<cr>", desc = "Find Files (Telescope)" },
+            { "<leader>fg", "<cmd>Telescope live_grep<cr>", desc = "Live Grep (Telescope)" },
+            { "<leader>fb", "<cmd>Telescope buffers<cr>", desc = "Find Buffers (Telescope)" },
+        },
     },
 
     {
@@ -83,5 +88,22 @@ require("lazy").setup({
             -- Global keybind to open Oil in the current file's directory
             vim.keymap.set("n", "-", "<CMD>Oil<CR>", { desc = "Open parent directory" })
         end,
-    }
+    },
+    {
+        'mrjones2014/smart-splits.nvim',
+        keys = {
+            -- Alt + hjkl for Navigation
+            { "<M-h>", function() require("smart-splits").move_cursor_left() end, desc = "Move Left" },
+            { "<M-j>", function() require("smart-splits").move_cursor_down() end, desc = "Move Down" },
+            { "<M-k>", function() require("smart-splits").move_cursor_up() end, desc = "Move Up" },
+            { "<M-l>", function() require("smart-splits").move_cursor_right() end, desc = "Move Right" },
+        },
+        config = function()
+            require('smart-splits').setup({
+                ignored_filetypes = { 'nofile', 'quickfix', 'qf', 'prompt' },
+                ignored_buftypes = { 'nofile' },
+		multiplexer_integration = 'wezterm',
+            })
+        end
+    },
 })

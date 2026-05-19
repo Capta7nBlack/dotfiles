@@ -3,8 +3,16 @@ local wezterm = require 'wezterm'
 -- This will hold the configuration.
 local config = wezterm.config_builder()
 
+local is_windows = wezterm.target_triple:find("windows") ~= nil
+local is_mac = wezterm.target_triple:find("apple") ~= nil
 
-config.default_prog = { 'powershell.exe' }
+if is_windows then
+  require('windows')(config)
+else
+  -- This handles both Linux and macOS for all standard behavior
+  require('unix')(config)
+end
+
 
 -- This is where you actually apply your config choices
 
@@ -13,7 +21,7 @@ config.enable_tab_bar = true
 config.color_scheme = 'Tokyo Night'
 config.font_size = 15
 config.window_decorations = "RESIZE"
-config.window_background_image = "D:/Programs/Editors/WezTerm/Killua.jpg"
+config.window_background_image = wezterm.config_dir .. '/background.jpg'
 config.window_background_image_hsb = {
   -- Darken the background image by reducing it to 1/3rd
   brightness = 0.15,

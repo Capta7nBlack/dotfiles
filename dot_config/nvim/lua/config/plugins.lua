@@ -20,9 +20,68 @@ vim.opt.rtp:prepend(lazypath)
 
 -- 4. Initialize lazy
 require("lazy").setup({
-    -- We will put our plugins in here next!
-    'nvim-telescope/telescope.nvim',
-    tag = '0.1.8',
-    dependencies = { 'nvim-lua/plenary.nvim' }
-    
+    {
+        -- TELESCOPE
+        'nvim-telescope/telescope.nvim',
+        tag = '0.1.8',
+        dependencies = { 'nvim-lua/plenary.nvim' }
+    },
+
+    {
+        -- OIL
+        'stevearc/oil.nvim',
+        dependencies = { "nvim-tree/nvim-web-devicons" },
+        config = function()
+            require("oil").setup({
+                -- 1. Hijack the default explorer
+                default_file_explorer = true,
+
+                -- 2. What data to show next to the file names
+                columns = {
+                    "icon",
+                    -- "permissions",
+                    -- "size",
+                    -- "mtime",
+                },
+
+                -- 3. Buffer-local keymaps specifically while inside an Oil buffer
+                keymaps = {
+                    ["g?"] = "actions.show_help",
+                    ["<CR>"] = "actions.select",
+                    ["<C-s>"] = "actions.select_vsplit",
+                    ["<C-h>"] = "actions.select_split",
+                    ["<C-p>"] = "actions.preview",
+                    ["<C-c>"] = "actions.close",
+                    ["-"] = "actions.parent",
+                    ["_"] = "actions.open_cwd",
+                    ["`"] = "actions.cd",
+                    ["~"] = "actions.tcd",
+                    ["gs"] = "actions.change_sort",
+                    ["gx"] = "actions.open_external",
+                    ["g."] = "actions.toggle_hidden",
+                    ["g\\"] = "actions.toggle_trash",
+                },
+
+                -- 4. Set to true to watch the filesystem for external changes
+                watch_for_changes = false,
+
+                -- 5. Safe deletion
+                delete_to_trash = true,
+                
+                -- 6. Float window options (if you prefer it to pop over your code instead of replacing it)
+                float = {
+                    padding = 2,
+                    max_width = 80,
+                    max_height = 20,
+                    border = "rounded",
+                    win_options = {
+                        winblend = 0,
+                    },
+                },
+            })
+            
+            -- Global keybind to open Oil in the current file's directory
+            vim.keymap.set("n", "-", "<CMD>Oil<CR>", { desc = "Open parent directory" })
+        end,
+    }
 })

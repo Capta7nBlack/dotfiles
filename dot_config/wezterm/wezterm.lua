@@ -92,7 +92,7 @@ config.keys = {
   -- Close current pane
   { key = 'x', mods = 'CTRL', action = act.CloseCurrentPane { confirm = true } },
   -- Toggle maximize pane
-  { key = 'm', mods = 'CTRL', action = act.TogglePaneZoomState },
+  { key = 'z', mods = 'CTRL', action = act.TogglePaneZoomState },
 
   -- === 4. RESIZE PANES (Alt + Shift + h/j/k/l) ===
   { key = 'H', mods = 'ALT|SHIFT', action = act.AdjustPaneSize { 'Left', 5 } },

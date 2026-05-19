@@ -68,6 +68,7 @@ require("lazy").setup({
                 -- 3. Buffer-local keymaps specifically while inside an Oil buffer
                 keymaps = {
                     ["g?"] = "actions.show_help",
+		    ["x"] = "actions.select",
                     ["<CR>"] = "actions.select",
                     ["<C-s>"] = "actions.select_vsplit",
                     ["<C-h>"] = "actions.select_split",

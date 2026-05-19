@@ -25,5 +25,8 @@ keymap.set('n', '<leader>w' , ':w<CR>' , { noremap = true, silent = true})
 ---- Buffer Close All, Except Current Shortcut
 keymap.set('n', '<leader>o', '<C-w>o', { noremap = true, silent = true })
 
+vim.keymap.set({"n", "v"}, "<leader>y", '"+y', { desc = "Yank to OS clipboard" })
+vim.keymap.set({"n", "v"}, "<leader>p", '"+p', { desc = "Paste from OS clipboard" })
+
 
 

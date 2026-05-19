@@ -1,6 +1,7 @@
 # 1. If the OS is NOT Windows, ignore the PowerShell profile
 {{ if ne .chezmoi.os "windows" }}
 readonly_Documents/WindowsPowerShell/**
+run_once_set_keyboard_speed.ps1
 {{ end }}
 
 # 2. If the OS IS Windows, ignore the Unix shell configs

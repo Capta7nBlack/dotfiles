@@ -124,4 +124,78 @@ require("lazy").setup({
             })
         end
     },
+
+-- ==========================================
+    -- SYNTAX HIGHLIGHTING (Tree-sitter)
+    -- ==========================================
+    {
+        "nvim-treesitter/nvim-treesitter",
+	branch = 'master',
+        build = ":TSUpdate",
+        config = function()
+
+	    require('nvim-treesitter.install').compilers = { "zig" }
+
+            require("nvim-treesitter.configs").setup({
+                -- The parsers you want installed automatically
+                ensure_installed = { "python", "javascript", "typescript", "json", "lua", "vim", "markdown" },
+                highlight = { 
+                    enable = true,
+                    -- Disable traditional regex highlighting for better performance
+                    additional_vim_regex_highlighting = false,
+                },
+                indent = { enable = true },
+            })
+        end
+    },
+
+    -- ==========================================
+    -- LANGUAGE SERVERS (LSP)
+    -- ==========================================
+    {
+        "neovim/nvim-lspconfig",
+        dependencies = {
+            -- Mason manages the external server binaries so you don't have to use npm/pip
+            "williamboman/mason.nvim",
+            "williamboman/mason-lspconfig.nvim",
+        },
+        config = function()
+            -- 1. Initialize Mason
+            require("mason").setup()
+
+            -- 2. Tell Mason to ensure our Python and Node servers are installed
+            require("mason-lspconfig").setup({
+                ensure_installed = { 
+                    "pyright", -- The standard Microsoft Python LSP
+                    "ts_ls",   -- The standard Node/TypeScript/JavaScript LSP
+                },
+            })
+
+            -- 3. Wire the installed servers up to Neovim
+            vim.lsp.config('pyright', {})
+            vim.lsp.enable('pyright')
+
+            vim.lsp.config('ts_ls', {})
+            vim.lsp.enable('ts_ls')
+
+
+            -- 4. Set up the universal LSP keybinds (Only active when an LSP is attached to a file)
+            vim.api.nvim_create_autocmd('LspAttach', {
+                callback = function(event)
+                    local opts = { buffer = event.buf }
+                    
+                    vim.keymap.set('n', 'K', vim.lsp.buf.hover, vim.tbl_extend("force", opts, { desc = "Hover Documentation" }))
+                    vim.keymap.set('n', 'gd', vim.lsp.buf.definition, vim.tbl_extend("force", opts, { desc = "Go to Definition" }))
+                    vim.keymap.set('n', 'gr', require('telescope.builtin').lsp_references, vim.tbl_extend("force", opts, { desc = "Find References" }))
+                    vim.keymap.set('n', '<leader>rn', vim.lsp.buf.rename, vim.tbl_extend("force", opts, { desc = "Rename Variable" }))
+                    vim.keymap.set('n', '<leader>ca', vim.lsp.buf.code_action, vim.tbl_extend("force", opts, { desc = "Code Actions" }))
+                    
+                    -- Diagnostics (Error viewing)
+                    vim.keymap.set('n', 'gl', vim.diagnostic.open_float, vim.tbl_extend("force", opts, { desc = "Show Line Diagnostics" }))
+                    vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, vim.tbl_extend("force", opts, { desc = "Previous Error" }))
+                    vim.keymap.set('n', ']d', vim.diagnostic.goto_next, vim.tbl_extend("force", opts, { desc = "Next Error" }))
+                end,
+            })
+        end
+    },
 })

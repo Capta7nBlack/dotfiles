@@ -1,6 +1,11 @@
+[settings]
+python.github_attestations = false
+
 [tools]
 neovim = "latest"
 fzf = "latest"
 ripgrep = "latest"
 fd = "latest"
 node = "22"
+python = "3.11.4"
+zig = "latest"

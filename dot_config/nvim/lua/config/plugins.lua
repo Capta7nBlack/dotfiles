@@ -171,12 +171,33 @@ require("lazy").setup({
                 },
             })
 
+	    local capabilities = require('blink.cmp').get_lsp_capabilities()
+
             -- 3. Wire the installed servers up to Neovim
-            vim.lsp.config('pyright', {})
+            vim.lsp.config('pyright', { capabilities = capabilities })
             vim.lsp.enable('pyright')
 
-            vim.lsp.config('ts_ls', {})
+            vim.lsp.config('ts_ls', { capabilities = capabilities })
             vim.lsp.enable('ts_ls')
+
+	    vim.diagnostic.config({
+                virtual_text = {
+                    prefix = '■ ', 
+                    spacing = 4,
+                },
+                signs = true,      
+                underline = true,  
+                update_in_insert = false, 
+                severity_sort = true,
+            })
+            
+            local signs = { Error = "✘", Warn = "▲", Hint = "⚑", Info = "»" }
+            for type, icon in pairs(signs) do
+                local hl = "DiagnosticSign" .. type
+                vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = hl })
+            end
+
+
 
 
             -- 4. Set up the universal LSP keybinds (Only active when an LSP is attached to a file)
@@ -196,6 +217,45 @@ require("lazy").setup({
                     vim.keymap.set('n', ']d', vim.diagnostic.goto_next, vim.tbl_extend("force", opts, { desc = "Next Error" }))
                 end,
             })
+        end
+    },
+
+{ --     BLINK AUTOCOMPLETION
+        'saghen/blink.cmp',
+        version = '*', -- Use release tags to avoid breaking changes
+        opts = {
+            -- 'default' maps <C-space> to open, <C-n>/<C-p> to navigate, and <CR> to select
+            keymap = { preset = 'default' }, 
+            
+            appearance = {
+                use_nvim_cmp_as_default = true,
+                nerd_font_variant = 'mono'
+            },
+            
+            -- Where to pull the typing suggestions from
+            sources = {
+                default = { 'lsp', 'path', 'snippets', 'buffer' },
+            },
+            
+            -- Shows a documentation popup for function parameters as you type them
+            signature = { enabled = true } 
+        }
+    },
+
+    {   --  COLOR THEME
+        "folke/tokyonight.nvim",
+        lazy = false,
+        priority = 1000, -- Forces this to load first
+        opts = {
+            transparent = true, 
+            styles = {
+                sidebars = "transparent",
+                floats = "transparent",
+            },
+        },
+        config = function(_, opts)
+            require("tokyonight").setup(opts)
+            vim.cmd[[colorscheme tokyonight]]
         end
     },
 })

@@ -40,7 +40,7 @@ opt.showbreak = ">>>"
 
 if _G.IS_WINDOWS then
     -- Force Windows to use pwsh (PowerShell Core) safely
-    vim.opt.shell = "cmd.exe"
+    vim.opt.shell = "powershell.exe"
     vim.opt.shellcmdflag = "-NoLogo -NoProfile -ExecutionPolicy RemoteSigned -Command [Console]::InputEncoding=[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;"
     vim.opt.shellredir = "-RedirectStandardOutput %s -NoNewWindow -Wait"
     vim.opt.shellpipe = "2>&1 | Out-File -Encoding UTF8 %s; exit $LastExitCode"

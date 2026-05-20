@@ -1,3 +1,8 @@
+# --- Keyboard Speed Heartbeat ---
+# Windows often resets this on wake or updates. 
+# This ensures it's always set to your preferred values.
+
+
 function f {
     param([string]$Option = "")
 

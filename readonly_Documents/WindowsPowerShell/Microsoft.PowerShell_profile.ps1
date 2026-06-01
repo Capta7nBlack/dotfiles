@@ -3,6 +3,17 @@
 # This ensures it's always set to your preferred values.
 
 
+function prompt {
+    $p = $executionContext.SessionState.Path.CurrentLocation
+    $osc7 = ""
+    if ($p.Provider.Name -eq "FileSystem") {
+        $ansi = [char]27
+        $path = $p.ProviderPath -Replace "\\", "/"
+        $osc7 = "$ansi]7;file://${env:COMPUTERNAME}/${path}${ansi}\"
+    }
+    "${osc7}PS $p$('>' * ($nestedPromptLevel + 1)) "
+}
+
 function f {
     param([string]$Option = "")
 

@@ -10,3 +10,5 @@ run_once_set_keyboard_speed.ps1
 .zshrc
 .bash_profile
 {{ end }}
+
+.wezterm-state/**/*.json

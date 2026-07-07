@@ -1,0 +1,11 @@
+[wsl2]
+# Keep the VM alive after the last command exits (default ~60s idle-kill).
+# Without this, the docker stack running inside WSL dies between commands.
+# Reclaim resources manually with: wsl --shutdown
+vmIdleTimeout=-1
+
+# Hard RAM cap for the whole WSL VM (host has 16GB; default would be 50%).
+memory=6GB
+
+# Return freed memory to Windows instead of hoarding it.
+autoMemoryReclaim=gradual

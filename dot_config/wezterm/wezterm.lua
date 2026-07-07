@@ -7,6 +7,7 @@ local resurrect = wezterm.plugin.require('https://github.com/MLFlexer/resurrect.
 
 local config = wezterm.config_builder()
 config.mux_enable_ssh_agent = false
+config.default_workspace = 'main'
 
 local is_windows = wezterm.target_triple:find('windows') ~= nil
 
@@ -48,20 +49,73 @@ local function list_workspace_names()
 end
 
 -- Save current workspace under its current workspace name.
+-- With named workspaces, the snapshot file is automatically <workspace>.json.
 local function save_session(win, pane)
   resurrect.state_manager.save_state(resurrect.workspace_state.get_workspace_state())
-  win:toast_notification('resurrect', 'Session saved', nil, 2000)
+  win:toast_notification('resurrect', 'Saved: ' .. mux.get_active_workspace(), nil, 2000)
 end
 
--- Save current workspace under a NAME you type.
-local function save_session_as(win, pane)
+-- Unified picker: live workspaces (●) switch instantly, saved snapshots (○)
+-- are restored into a fresh workspace of the same name. Other workspaces
+-- keep running untouched in the background.
+local function workspace_picker(win, pane)
+  local live = mux.get_workspace_names()
+  local is_live = {}
+  local choices = {}
+  for _, n in ipairs(live) do
+    is_live[n] = true
+    table.insert(choices, { id = n, label = '● ' .. n })
+  end
+  for _, n in ipairs(list_workspace_names()) do
+    if not is_live[n] then
+      table.insert(choices, { id = n, label = '○ ' .. n })
+    end
+  end
+  win:perform_action(
+    act.InputSelector {
+      title = 'Workspaces  (● live · ○ snapshot)',
+      fuzzy = true,
+      choices = choices,
+      action = wezterm.action_callback(function(w, inner_pane, id)
+        if not id then return end
+        if is_live[id] then
+          w:perform_action(act.SwitchToWorkspace { name = id }, inner_pane)
+          w:toast_notification('workspace', '→ ' .. id, nil, 1500)
+          return
+        end
+        -- Not live: create the workspace, then restore the snapshot into it.
+        w:perform_action(act.SwitchToWorkspace { name = id }, inner_pane)
+        -- SwitchToWorkspace spawns the new workspace asynchronously; defer the
+        -- restore one tick so it lands in the new workspace's window.
+        wezterm.time.call_after(0.15, function()
+          local state = resurrect.state_manager.load_state(id, 'workspace')
+          local gui = wezterm.gui.gui_windows()[1]
+          if not gui then return end
+          resurrect.workspace_state.restore_workspace(state, {
+            window = gui:mux_window(),
+            relative = true,
+            restore_text = true,
+            close_open_tabs = true,   -- replace the fresh workspace's blank tab
+            resize_window = false,
+            on_pane_restore = resurrect.tab_state.default_on_pane_restore,
+          })
+          gui:toast_notification('workspace', '→ ' .. id .. ' (restored)', nil, 1500)
+        end)
+      end),
+    },
+    pane
+  )
+end
+
+-- Create a new named workspace and switch to it.
+local function new_workspace(win, pane)
   win:perform_action(
     act.PromptInputLine {
-      description = 'Save snapshot as:',
-      action = wezterm.action_callback(function(w, _, line)
+      description = 'New workspace name:',
+      action = wezterm.action_callback(function(w, inner_pane, line)
         if line and line ~= '' then
-          resurrect.state_manager.save_state(resurrect.workspace_state.get_workspace_state(), line)
-          w:toast_notification('resurrect', 'Saved: ' .. line, nil, 2000)
+          w:perform_action(act.SwitchToWorkspace { name = line }, inner_pane)
+          w:toast_notification('workspace', '→ ' .. line .. ' (new)', nil, 1500)
         end
       end),
     },
@@ -69,33 +123,18 @@ local function save_session_as(win, pane)
   )
 end
 
--- Pick a snapshot by name and rebuild it INSIDE the current window.
-local function restore_session(win, pane)
-  local names = list_workspace_names()
-  if #names == 0 then
-    win:toast_notification('resurrect', 'No snapshots yet — press Alt+s to save one', nil, 3000)
-    return
-  end
-  local choices = {}
-  for _, n in ipairs(names) do
-    table.insert(choices, { id = n, label = n })
-  end
+-- Rename the current workspace. Note: the saved snapshot keeps its old name;
+-- press Alt+s afterwards to save under the new name (Alt+d to purge the old).
+local function rename_workspace(win, pane)
+  local current = mux.get_active_workspace()
   win:perform_action(
-    act.InputSelector {
-      title = 'Restore snapshot',
-      fuzzy = true,
-      choices = choices,
-      action = wezterm.action_callback(function(_, inner_pane, id)
-        if not id then return end
-        local state = resurrect.state_manager.load_state(id, 'workspace')
-        resurrect.workspace_state.restore_workspace(state, {
-          window = inner_pane:window(), -- reuse THIS window (stays fullscreen)
-          relative = true,
-          restore_text = true,
-          close_open_tabs = true,       -- replace current tabs/panes -> repeatable
-          resize_window = false,        -- don't force saved pixel size -> no shift
-          on_pane_restore = resurrect.tab_state.default_on_pane_restore,
-        })
+    act.PromptInputLine {
+      description = 'Rename workspace "' .. current .. '" to:',
+      action = wezterm.action_callback(function(w, _, line)
+        if line and line ~= '' then
+          mux.rename_workspace(current, line)
+          w:toast_notification('workspace', current .. ' → ' .. line, nil, 2000)
+        end
       end),
     },
     pane
@@ -130,7 +169,31 @@ end
 -- ============================================================
 -- APPEARANCE
 -- ============================================================
-config.enable_tab_bar = false
+-- Tab bar as a pure status strip: tabs hidden, only workspace name shown.
+config.enable_tab_bar = true
+config.use_fancy_tab_bar = false          -- retro bar: thin, text-only
+config.show_tabs_in_tab_bar = false       -- hide the tabs themselves
+config.show_new_tab_button_in_tab_bar = false
+config.tab_bar_at_bottom = false
+
+-- Right status: list of live workspaces, active one highlighted bold blue.
+wezterm.on('update-status', function(window, pane)
+  local active = window:active_workspace()
+  local names = mux.get_workspace_names() -- sorted alphabetically
+  local parts = {}
+  for _, name in ipairs(names) do
+    if name == active then
+      table.insert(parts, { Attribute = { Intensity = 'Bold' } })
+      table.insert(parts, { Foreground = { Color = '#7aa2f7' } })
+      table.insert(parts, { Text = ' ' .. name .. ' ' })
+      table.insert(parts, 'ResetAttributes')
+    else
+      table.insert(parts, { Foreground = { Color = '#565f89' } }) -- Tokyo Night comment gray
+      table.insert(parts, { Text = ' ' .. name .. ' ' })
+    end
+  end
+  window:set_right_status(wezterm.format(parts))
+end)
 config.color_scheme = 'Tokyo Night'
 config.font_size = 15
 config.window_decorations = 'RESIZE'
@@ -146,6 +209,9 @@ config.inactive_pane_hsb = {
 }
 config.colors = {
   split = '#90D6FF',
+  tab_bar = {
+    background = 'rgba(0,0,0,0)', -- fully transparent: background image shows through
+  },
 }
 
 -- ============================================================
@@ -192,10 +258,13 @@ config.keys = {
   { key = 'K', mods = 'ALT|SHIFT', action = act.AdjustPaneSize { 'Up', 5 } },
   { key = 'L', mods = 'ALT|SHIFT', action = act.AdjustPaneSize { 'Right', 5 } },
 
-  -- 5. Resurrect session (manual only)
+  -- 5. Workspaces + resurrect
+  { key = 'h', mods = 'CTRL|ALT', action = act.SwitchWorkspaceRelative(-1) },
+  { key = 'l', mods = 'CTRL|ALT', action = act.SwitchWorkspaceRelative(1) },
+  { key = 'w', mods = 'ALT', action = wezterm.action_callback(workspace_picker) },
+  { key = 'n', mods = 'ALT', action = wezterm.action_callback(new_workspace) },
+  { key = 'r', mods = 'ALT', action = wezterm.action_callback(rename_workspace) },
   { key = 's', mods = 'ALT', action = wezterm.action_callback(save_session) },
-  { key = 'S', mods = 'ALT|SHIFT', action = wezterm.action_callback(save_session_as) },
-  { key = 'r', mods = 'ALT', action = wezterm.action_callback(restore_session) },
   { key = 'd', mods = 'ALT', action = wezterm.action_callback(delete_session) },
 }
 

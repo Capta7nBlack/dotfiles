@@ -65,6 +65,10 @@ require("lazy").setup({
                     -- "mtime",
                 },
 
+		view_options = {
+		    show_hidden = true,
+		},
+
                 -- 3. Buffer-local keymaps specifically while inside an Oil buffer
                 keymaps = {
                     ["g?"] = "actions.show_help",

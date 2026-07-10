@@ -221,12 +221,44 @@ local function is_vim(pane)
   return pane:get_user_vars().IS_NVIM == 'true'
 end
 
+-- Neovim (smart-splits at_edge) hands navigation over via a user var when
+-- the cursor moves past its outermost split. Payload is "direction:counter";
+-- the counter only exists to make each value unique so the event always
+-- fires. This replaces `wezterm cli activate-pane-direction`, whose process
+-- spawn cost 20-1000ms per keypress on Windows.
+wezterm.on('user-var-changed', function(window, pane, name, value)
+  if name == 'NVIM_EDGE_NAV' then
+    local dir_map = { left = 'Left', down = 'Down', up = 'Up', right = 'Right' }
+    local direction = dir_map[value:match('^(%a+)')]
+    if direction then
+      window:perform_action(act.ActivatePaneDirection(direction), pane)
+    end
+  end
+end)
+
+-- Neovim publishes NVIM_CAN_MOVE (see nvim autocmd.lua): the hjkl directions
+-- in which it has internal splits. If Neovim can't move that way, don't send
+-- the key into Neovim at all — switch panes natively right here. Forwarding
+-- and waiting for Neovim to hand navigation back (NVIM_EDGE_NAV) costs a
+-- full terminal roundtrip per keypress; this path costs none.
+local dir_to_hjkl = { Left = 'h', Down = 'j', Up = 'k', Right = 'l' }
+
+local function nvim_handles(pane, direction)
+  local can_move = pane:get_user_vars().NVIM_CAN_MOVE
+  if can_move == nil then
+    -- Not published yet (Neovim session older than this config): forward the
+    -- key; the NVIM_EDGE_NAV fallback still makes navigation work.
+    return true
+  end
+  return can_move:find(dir_to_hjkl[direction], 1, true) ~= nil
+end
+
 local function direction_keys(key, direction)
   return {
     key = key,
     mods = 'ALT',
     action = wezterm.action_callback(function(window, pane)
-      if is_vim(pane) then
+      if is_vim(pane) and nvim_handles(pane, direction) then
         window:perform_action({ SendKey = { key = key, mods = 'ALT' } }, pane)
       else
         window:perform_action({ ActivatePaneDirection = direction }, pane)

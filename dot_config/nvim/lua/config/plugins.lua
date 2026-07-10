@@ -112,7 +112,6 @@ require("lazy").setup({
     },
     {   -- SMART SPLITS
         'mrjones2014/smart-splits.nvim',
-	lazy = false,
         keys = {
             -- Alt + hjkl for Navigation
             { "<M-h>", function() require("smart-splits").move_cursor_left() end, desc = "Move Left" },
@@ -121,10 +120,34 @@ require("lazy").setup({
             { "<M-l>", function() require("smart-splits").move_cursor_right() end, desc = "Move Right" },
         },
         config = function()
+            -- Counter makes every payload unique; WezTerm's user-var-changed
+            -- event is not guaranteed to fire when the value is unchanged
+            -- (e.g. hitting Alt+h at the left edge twice in a row).
+            local edge_nav_counter = 0
+
             require('smart-splits').setup({
                 ignored_filetypes = { 'nofile', 'quickfix', 'qf', 'prompt' },
                 ignored_buftypes = { 'nofile' },
-		multiplexer_integration = 'wezterm',
+
+                -- NOT 'wezterm': the CLI integration spawns wezterm.exe per
+                -- keypress (blocking, 20-1000ms on Windows). Pane handoff is
+                -- done via the NVIM_EDGE_NAV user var below instead; the
+                -- matching listener lives in wezterm.lua (user-var-changed).
+                multiplexer_integration = false,
+
+                -- Called when moving past the outermost Neovim split: hand
+                -- the navigation over to WezTerm via an escape sequence
+                -- (instant, no process spawn).
+                at_edge = function(ctx)
+                    edge_nav_counter = edge_nav_counter + 1
+                    local payload = ctx.direction .. ':' .. edge_nav_counter
+                    local esc = string.format(
+                        '\027]1337;SetUserVar=%s=%s\007',
+                        'NVIM_EDGE_NAV',
+                        vim.base64.encode(payload)
+                    )
+                    vim.fn.chansend(vim.v.stderr, esc)
+                end,
             })
         end
     },
@@ -136,6 +159,9 @@ require("lazy").setup({
         "nvim-treesitter/nvim-treesitter",
 	branch = 'master',
         build = ":TSUpdate",
+        -- Highlighting only matters once a real file is in a buffer; skips
+        -- loading it for bare `nvim` / Oil-only sessions.
+        event = { 'BufReadPost', 'BufNewFile' },
         config = function()
 
 	    require('nvim-treesitter.install').compilers = { "zig" }
@@ -158,6 +184,10 @@ require("lazy").setup({
     -- ==========================================
     {
         "neovim/nvim-lspconfig",
+        -- LSP (and Mason's registry checks) only make sense with a file open;
+        -- BufReadPre fires before the first real buffer loads, so servers
+        -- still attach to it as usual.
+        event = { 'BufReadPre', 'BufNewFile' },
         dependencies = {
             -- Mason manages the external server binaries so you don't have to use npm/pip
             "williamboman/mason.nvim",
@@ -227,6 +257,9 @@ require("lazy").setup({
 { --     BLINK AUTOCOMPLETION
         'saghen/blink.cmp',
         version = '*', -- Use release tags to avoid breaking changes
+        -- Completion is only needed once you start typing; keeps it off the
+        -- startup path (~25ms measured).
+        event = 'InsertEnter',
         opts = {
             -- 'default' maps <C-space> to open, <C-n>/<C-p> to navigate, and <CR> to select
             keymap = { preset = 'default' }, 
